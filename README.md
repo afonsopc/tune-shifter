@@ -1,6 +1,6 @@
 # Tune Shifter
 
-Take control of any audio or video on the web. Change playback speed, add reverb, adjust volume, and preserve pitch — all from a sleek popup interface.
+Take control of any audio or video on the web. Change playback speed, add reverb, adjust volume, and preserve pitch, all from a sleek popup interface.
 
 Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
@@ -19,18 +19,18 @@ https://github.com/user-attachments/assets/fbdcc12c-7429-4eea-a1d9-c4f1363b28d0
 
 ### Features
 
-*   🎵 **Universal Control** — Works on any website with audio/video (YouTube, Spotify, Netflix, etc.)
-*   ⏱️ **Playback Speed** — Adjust from 0.5x to 2x with fine-grained control
-*   🎚️ **Reverb** — Add spatial depth with real-time convolution reverb
-*   🔊 **Volume** — Boost or reduce volume beyond the player limits
-*   🎼 **Pitch Preservation** — Toggle pitch correction when changing speed
-*   💾 **Persistent Settings** — Your preferences are saved and automatically applied to new videos
+*   🎵 **Universal Control** - Works on any website with audio/video (YouTube, Spotify, Netflix, etc.)
+*   ⏱️ **Playback Speed** - Adjust from 0.5x to 2x with fine-grained control
+*   🎚️ **Reverb** - Add spatial depth with real-time convolution reverb
+*   🔊 **Volume** - Boost or reduce volume beyond the player limits
+*   🎼 **Pitch Preservation** - Toggle pitch correction when changing speed
+*   💾 **Persistent Settings** - Your preferences are saved and automatically applied to new videos
 
 ## How to Use
 
 1. **Pin the extension** to your toolbar
 2. **Navigate to any page** with audio or video
 3. **Click the Tune Shifter icon** to open the control panel
-4. **Adjust settings** with the sliders — changes are saved automatically
+4. **Adjust settings** with the sliders - changes are saved automatically
 
 Your settings persist across page reloads and new videos!
