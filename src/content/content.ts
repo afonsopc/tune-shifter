@@ -37,6 +37,7 @@ export interface SiteSettings extends PersistedSettings {
 }
 
 export type MessageRequest =
+  | { action: "ping" }
   | { action: "getMedia" }
   | { action: "setVolume"; id: number; value: number }
   | { action: "setPlaybackRate"; id: number; value: number }
@@ -541,6 +542,8 @@ chrome.runtime.onMessage.addListener(
       }
       
       switch (request.action) {
+        case "ping":
+          return { pong: true };
         case "getMedia":
           return { media: await getAllMedia() };
         case "setVolume":
