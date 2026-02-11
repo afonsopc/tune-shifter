@@ -3,19 +3,6 @@ import type { MediaInfo } from "../../types";
 
 const POLL_INTERVAL = 500;
 
-async function injectContentScript(tabId: number): Promise<void> {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content/content.js"]
-    });
-    // Wait a bit for script to initialize
-    await new Promise(resolve => setTimeout(resolve, 100));
-  } catch (e) {
-    throw e;
-  }
-}
-
 async function queryContentScript(
   tabId: number,
   message: Record<string, unknown>
@@ -52,34 +39,13 @@ export function useMediaList() {
         tabIdRef.current = tab.id;
       }
 
-      const tabId = tabIdRef.current;
-
-      // Try to query, inject if needed
-      try {
-        const response = await queryContentScript(tabId, {
-          action: "getMedia",
-        });
-        if (response?.media) {
-          setMedia(response.media);
-          setError(null);
-        }
-      } catch {
-        // Content script not injected, try to inject it
-        try {
-          await injectContentScript(tabId);
-          // Try again after injection
-          const response = await queryContentScript(tabId, {
-            action: "getMedia",
-          });
-          if (response?.media) {
-            setMedia(response.media);
-            setError(null);
-          }
-        } catch (injectErr) {
-          setError(
-            "Cannot access this page. Try reloading or navigating to a regular webpage."
-          );
-        }
+      const response = await queryContentScript(tabIdRef.current, {
+        action: "getMedia",
+      });
+      
+      if (response?.media) {
+        setMedia(response.media);
+        setError(null);
       }
     } catch (err) {
       setError(
