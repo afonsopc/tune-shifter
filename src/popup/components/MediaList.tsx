@@ -8,6 +8,7 @@ interface MediaListProps {
   onSetPreservesPitch: (id: number, value: boolean) => void;
   onSetMuted: (id: number, value: boolean) => void;
   onSetReverb: (id: number, value: number) => void;
+  onSetReverbEnabled: (id: number, value: boolean) => void;
 }
 
 export function MediaList({
@@ -17,6 +18,7 @@ export function MediaList({
   onSetPreservesPitch,
   onSetMuted,
   onSetReverb,
+  onSetReverbEnabled,
 }: MediaListProps) {
   if (media.length === 0) {
     return (
@@ -53,6 +55,7 @@ export function MediaList({
           onSetPreservesPitch={onSetPreservesPitch}
           onSetMuted={onSetMuted}
           onSetReverb={onSetReverb}
+          onSetReverbEnabled={onSetReverbEnabled}
         />
       ))}
     </div>

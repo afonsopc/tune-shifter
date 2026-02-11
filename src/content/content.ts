@@ -1,11 +1,9 @@
 /**
  * Tune Shifter — Content Script
  *
- * Injected into every page to detect <audio> and <video> elements,
- * track dynamically created ones, and respond to popup commands.
- * 
  * Features: Volume, PlaybackRate, PreservesPitch, Mute, Reverb (Web Audio API)
- * Persistence: Settings are saved to chrome.storage and restored on new media
+ * Persistence: Settings saved per domain
+ * Reverb: Only initialized when explicitly enabled
  */
 
 export interface MediaInfo {
@@ -21,8 +19,10 @@ export interface MediaInfo {
   preservesPitch: boolean;
   muted: boolean;
   reverb: number;
+  reverbEnabled: boolean;
 }
 
+// Settings that are persisted per site
 export interface PersistedSettings {
   volume: number;
   playbackRate: number;
@@ -31,63 +31,90 @@ export interface PersistedSettings {
   reverb: number;
 }
 
+// Full settings including non-persisted state
+export interface SiteSettings extends PersistedSettings {
+  reverbEnabled: boolean;
+}
+
 export type MessageRequest =
   | { action: "getMedia" }
   | { action: "setVolume"; id: number; value: number }
   | { action: "setPlaybackRate"; id: number; value: number }
   | { action: "setPreservesPitch"; id: number; value: boolean }
   | { action: "setMuted"; id: number; value: boolean }
-  | { action: "setReverb"; id: number; value: number };
+  | { action: "setReverb"; id: number; value: number }
+  | { action: "setReverbEnabled"; id: number; value: boolean };
 
-const DEFAULT_SETTINGS: PersistedSettings = {
+const DEFAULT_SETTINGS: SiteSettings = {
   volume: 1,
   playbackRate: 1,
   preservesPitch: true,
   muted: false,
   reverb: 0,
+  reverbEnabled: false,
 };
 
-// Current settings (loaded from storage or defaults)
-let currentSettings: PersistedSettings = { ...DEFAULT_SETTINGS };
-
-// Load settings from storage on startup
-async function loadSettings(): Promise<void> {
-  try {
-    const result = await chrome.storage.local.get(['tuneShifterSettings']);
-    if (result.tuneShifterSettings) {
-      currentSettings = { ...DEFAULT_SETTINGS, ...result.tuneShifterSettings };
-    }
-  } catch (e) {
-    console.log('Tune Shifter: Could not load settings, using defaults');
-  }
+// Get current domain for per-site storage
+function getCurrentDomain(): string {
+  return window.location.hostname || 'default';
 }
 
-// Save settings to storage
-async function saveSettings(): Promise<void> {
-  try {
-    await chrome.storage.local.set({ tuneShifterSettings: currentSettings });
-  } catch (e) {
-    console.log('Tune Shifter: Could not save settings');
-  }
-}
+// Current site settings
+let currentSettings: SiteSettings = { ...DEFAULT_SETTINGS };
+let settingsLoaded = false;
 
-// Audio context singleton
+// Audio context - only created when reverb is enabled
 let audioContext: AudioContext | null = null;
 let impulseResponseBuffer: AudioBuffer | null = null;
 
-// Media audio graph registry
+// Media registry
 interface MediaAudioGraph {
   sourceNode: MediaElementAudioSourceNode;
   dryGain: GainNode;
   wetGain: GainNode;
   convolver: ConvolverNode;
   reverbMix: number;
+  reverbEnabled: boolean;
 }
 const audioGraphRegistry = new Map<number, MediaAudioGraph>();
-
-// Element registry
 const mediaRegistry = new Map<number, HTMLMediaElement>();
 let nextId = 1;
+
+// Load settings for current site (reverbEnabled always starts as false)
+async function loadSettings(): Promise<void> {
+  try {
+    const domain = getCurrentDomain();
+    const storageKey = `tuneShifter_${domain}`;
+    const result = await chrome.storage.local.get([storageKey]);
+    const siteSettings = result[storageKey];
+    if (siteSettings && typeof siteSettings === 'object') {
+      currentSettings = { ...DEFAULT_SETTINGS, ...siteSettings, reverbEnabled: false };
+    } else {
+      currentSettings = { ...DEFAULT_SETTINGS };
+    }
+    settingsLoaded = true;
+  } catch (e) {
+    currentSettings = { ...DEFAULT_SETTINGS };
+    settingsLoaded = true;
+  }
+}
+
+// Save settings for current site (reverbEnabled is NOT persisted)
+async function saveSettings(): Promise<void> {
+  try {
+    const domain = getCurrentDomain();
+    const settingsToSave: PersistedSettings = {
+      volume: currentSettings.volume,
+      playbackRate: currentSettings.playbackRate,
+      preservesPitch: currentSettings.preservesPitch,
+      muted: currentSettings.muted,
+      reverb: currentSettings.reverb,
+    };
+    await chrome.storage.local.set({ [`tuneShifter_${domain}`]: settingsToSave });
+  } catch (e) {
+    // Ignore storage errors
+  }
+}
 
 function getMediaId(el: HTMLMediaElement): number {
   for (const [id, registered] of mediaRegistry) {
@@ -98,21 +125,24 @@ function getMediaId(el: HTMLMediaElement): number {
   return id;
 }
 
-/** Apply persisted settings to a media element */
-function applyPersistedSettings(el: HTMLMediaElement, id: number): void {
+/** Apply settings to media element - only Web Audio if reverb enabled */
+function applySettingsToElement(el: HTMLMediaElement, id: number): void {
+  // Basic settings always apply
   el.volume = currentSettings.volume;
   el.playbackRate = currentSettings.playbackRate;
   (el as any).preservesPitch = currentSettings.preservesPitch;
   (el as any).mozPreservesPitch = currentSettings.preservesPitch;
   el.muted = currentSettings.muted;
   
-  // Apply reverb if audio graph exists
-  if (audioGraphRegistry.has(id)) {
-    updateReverbMix(id, currentSettings.reverb);
+  // Only init audio graph if reverb is enabled
+  if (currentSettings.reverbEnabled) {
+    ensureAudioGraph(id, el).then(() => {
+      updateReverbMix(id, currentSettings.reverb);
+    });
   }
 }
 
-/** Initialize Web Audio context */
+/** Initialize Web Audio context - only when needed */
 async function initAudioContext(): Promise<AudioContext> {
   if (audioContext) return audioContext;
   
@@ -121,7 +151,7 @@ async function initAudioContext(): Promise<AudioContext> {
   return audioContext;
 }
 
-/** Create white noise buffer */
+/** Create white noise buffer for impulse response */
 function createWhiteNoiseBuffer(ctx: AudioContext | OfflineAudioContext): AudioBuffer {
   const decayTime = 3;
   const preDelay = 0.03;
@@ -165,46 +195,54 @@ async function createImpulseResponse(audioContext: AudioContext): Promise<AudioB
   return await offlineContext.startRendering();
 }
 
-/** Create audio graph for a media element */
-async function createAudioGraph(id: number, el: HTMLMediaElement): Promise<MediaAudioGraph> {
-  const ctx = await initAudioContext();
+/** Create audio graph for reverb processing */
+async function createAudioGraph(id: number, el: HTMLMediaElement): Promise<MediaAudioGraph | null> {
+  // Only create if reverb is enabled
+  if (!currentSettings.reverbEnabled) return null;
   
-  if (ctx.state === "suspended") {
-    await ctx.resume();
+  // Check if already exists
+  if (audioGraphRegistry.has(id)) return audioGraphRegistry.get(id)!;
+  
+  try {
+    const ctx = await initAudioContext();
+    
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+    
+    const sourceNode = ctx.createMediaElementSource(el);
+    
+    const dryGain = ctx.createGain();
+    dryGain.gain.value = 1;
+    
+    const convolver = ctx.createConvolver();
+    convolver.buffer = impulseResponseBuffer;
+    
+    const wetGain = ctx.createGain();
+    wetGain.gain.value = 0;
+    
+    sourceNode.connect(dryGain);
+    dryGain.connect(ctx.destination);
+    
+    sourceNode.connect(convolver);
+    convolver.connect(wetGain);
+    wetGain.connect(ctx.destination);
+    
+    const graph: MediaAudioGraph = {
+      sourceNode,
+      dryGain,
+      wetGain,
+      convolver,
+      reverbMix: 0,
+      reverbEnabled: true,
+    };
+    
+    audioGraphRegistry.set(id, graph);
+    return graph;
+  } catch (e) {
+    // Web Audio might fail (e.g., CORS), fallback to normal playback
+    return null;
   }
-  
-  const sourceNode = ctx.createMediaElementSource(el);
-  
-  const dryGain = ctx.createGain();
-  dryGain.gain.value = 1;
-  
-  const convolver = ctx.createConvolver();
-  convolver.buffer = impulseResponseBuffer;
-  
-  const wetGain = ctx.createGain();
-  wetGain.gain.value = 0;
-  
-  sourceNode.connect(dryGain);
-  dryGain.connect(ctx.destination);
-  
-  sourceNode.connect(convolver);
-  convolver.connect(wetGain);
-  wetGain.connect(ctx.destination);
-  
-  const graph: MediaAudioGraph = {
-    sourceNode,
-    dryGain,
-    wetGain,
-    convolver,
-    reverbMix: 0,
-  };
-  
-  audioGraphRegistry.set(id, graph);
-  
-  // Apply persisted reverb setting
-  updateReverbMix(id, currentSettings.reverb);
-  
-  return graph;
 }
 
 /** Update reverb mix */
@@ -222,9 +260,41 @@ function updateReverbMix(id: number, wetMix: number): void {
 }
 
 /** Ensure audio graph exists */
-async function ensureAudioGraph(id: number, el: HTMLMediaElement): Promise<void> {
-  if (!audioGraphRegistry.has(id)) {
+async function ensureAudioGraph(id: number, el: HTMLMediaElement): Promise<MediaAudioGraph | null> {
+  return createAudioGraph(id, el);
+}
+
+/** Toggle reverb on/off for a media element */
+async function toggleReverb(id: number, enabled: boolean): Promise<void> {
+  const el = mediaRegistry.get(id);
+  if (!el) return;
+  
+  if (enabled) {
+    // Enable: create audio graph
     await createAudioGraph(id, el);
+    updateReverbMix(id, currentSettings.reverb);
+  } else {
+    // Disable: disconnect and remove graph
+    const graph = audioGraphRegistry.get(id);
+    if (graph && audioContext) {
+      // Fade out wet signal
+      const now = audioContext.currentTime;
+      graph.wetGain.gain.setTargetAtTime(0, now, 0.1);
+      graph.dryGain.gain.setTargetAtTime(1, now, 0.1);
+      
+      // Cleanup after fade
+      setTimeout(() => {
+        try {
+          graph.sourceNode.disconnect();
+          graph.dryGain.disconnect();
+          graph.wetGain.disconnect();
+          graph.convolver.disconnect();
+        } catch (e) {
+          // Ignore disconnection errors
+        }
+        audioGraphRegistry.delete(id);
+      }, 200);
+    }
   }
 }
 
@@ -289,11 +359,6 @@ function getTitle(el: HTMLMediaElement): string {
 /** Build MediaInfo snapshot */
 async function buildMediaInfo(el: HTMLMediaElement): Promise<MediaInfo> {
   const id = getMediaId(el);
-  
-  if (el.readyState >= 1) {
-    await ensureAudioGraph(id, el);
-  }
-  
   const graph = audioGraphRegistry.get(id);
   
   return {
@@ -314,6 +379,7 @@ async function buildMediaInfo(el: HTMLMediaElement): Promise<MediaInfo> {
           : true,
     muted: el.muted,
     reverb: graph?.reverbMix ?? currentSettings.reverb,
+    reverbEnabled: graph?.reverbEnabled ?? currentSettings.reverbEnabled,
   };
 }
 
@@ -330,10 +396,10 @@ async function getAllMedia(): Promise<MediaInfo[]> {
   return result;
 }
 
-/** Apply a change to media and persist */
+/** Apply a change and save */
 async function applyChange(
   id: number,
-  prop: keyof PersistedSettings,
+  prop: keyof SiteSettings,
   value: number | boolean
 ): Promise<boolean> {
   const el = mediaRegistry.get(id);
@@ -358,27 +424,30 @@ async function applyChange(
       currentSettings.muted = el.muted;
       break;
     case "reverb":
-      updateReverbMix(id, Math.max(0, Math.min(1, value as number)));
-      currentSettings.reverb = value as number;
+      currentSettings.reverb = Math.max(0, Math.min(1, value as number));
+      if (currentSettings.reverbEnabled) {
+        updateReverbMix(id, currentSettings.reverb);
+      }
+      break;
+    case "reverbEnabled":
+      currentSettings.reverbEnabled = value as boolean;
+      await toggleReverb(id, currentSettings.reverbEnabled);
       break;
   }
   
-  // Save to storage
   await saveSettings();
   return true;
 }
 
-// --- Intercept dynamically created Audio/Video elements ---
+// --- Intercept dynamically created elements ---
 
 const OriginalAudio = window.Audio;
 const PatchedAudio = function (this: HTMLAudioElement, src?: string) {
   const audio = new OriginalAudio(src);
   const id = getMediaId(audio);
   
-  // Apply settings when audio starts playing
   audio.addEventListener('play', () => {
-    applyPersistedSettings(audio, id);
-    ensureAudioGraph(id, audio);
+    applySettingsToElement(audio, id);
   }, { once: true });
   
   return audio;
@@ -402,10 +471,8 @@ document.createElement = function <K extends keyof HTMLElementTagNameMap>(
     const mediaEl = el as unknown as HTMLMediaElement;
     const id = getMediaId(mediaEl);
     
-    // Apply settings when element starts playing
     mediaEl.addEventListener('play', () => {
-      applyPersistedSettings(mediaEl, id);
-      ensureAudioGraph(id, mediaEl);
+      applySettingsToElement(mediaEl, id);
     }, { once: true });
   }
   return el;
@@ -420,13 +487,10 @@ const observer = new MutationObserver((mutations) => {
       
       const processMedia = (el: HTMLMediaElement) => {
         const id = getMediaId(el);
-        // Apply settings immediately and on play
-        applyPersistedSettings(el, id);
-        ensureAudioGraph(id, el);
+        applySettingsToElement(el, id);
         
         el.addEventListener('play', () => {
-          applyPersistedSettings(el, id);
-          ensureAudioGraph(id, el);
+          applySettingsToElement(el, id);
         }, { once: true });
       };
       
@@ -447,11 +511,9 @@ observer.observe(document.documentElement, {
 
 // --- Handle existing elements ---
 
-// Process elements already in the DOM
 discoverMediaElements().forEach((el) => {
   const id = getMediaId(el);
-  applyPersistedSettings(el, id);
-  ensureAudioGraph(id, el);
+  applySettingsToElement(el, id);
 });
 
 // --- Handle play events ---
@@ -460,8 +522,7 @@ document.addEventListener("play", (e) => {
   const target = e.target;
   if (target instanceof HTMLMediaElement) {
     const id = getMediaId(target);
-    applyPersistedSettings(target, id);
-    ensureAudioGraph(id, target);
+    applySettingsToElement(target, id);
   }
 }, true);
 
@@ -474,6 +535,11 @@ chrome.runtime.onMessage.addListener(
     sendResponse: (response: any) => void
   ) => {
     const handleAsync = async () => {
+      // Ensure settings are loaded
+      if (!settingsLoaded) {
+        await loadSettings();
+      }
+      
       switch (request.action) {
         case "getMedia":
           return { media: await getAllMedia() };
@@ -492,6 +558,9 @@ chrome.runtime.onMessage.addListener(
         case "setReverb":
           await applyChange(request.id, "reverb", request.value);
           return { ok: true };
+        case "setReverbEnabled":
+          await applyChange(request.id, "reverbEnabled", request.value);
+          return { ok: true };
         default:
           return { error: "Unknown action" };
       }
@@ -505,5 +574,5 @@ chrome.runtime.onMessage.addListener(
 // --- Initialize ---
 
 loadSettings().then(() => {
-  console.log('Tune Shifter: Settings loaded', currentSettings);
+  console.log('Tune Shifter: Settings loaded for', getCurrentDomain(), currentSettings);
 });

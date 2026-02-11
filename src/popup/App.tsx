@@ -31,6 +31,11 @@ export default function App() {
     [sendCommand]
   );
 
+  const handleSetReverbEnabled = useCallback(
+    (id: number, value: boolean) => sendCommand("setReverbEnabled", id, value),
+    [sendCommand]
+  );
+
   return (
     <div className="app">
       <header className="app-header">
@@ -74,6 +79,7 @@ export default function App() {
             onSetPreservesPitch={handleSetPreservesPitch}
             onSetMuted={handleSetMuted}
             onSetReverb={handleSetReverb}
+            onSetReverbEnabled={handleSetReverbEnabled}
           />
         )}
       </main>

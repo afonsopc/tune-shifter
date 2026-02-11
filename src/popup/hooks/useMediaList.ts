@@ -81,6 +81,8 @@ export function useMediaList() {
                 return { ...m, muted: value as boolean };
               case "setReverb":
                 return { ...m, reverb: value as number };
+              case "setReverbEnabled":
+                return { ...m, reverbEnabled: value as boolean };
               default:
                 return m;
             }

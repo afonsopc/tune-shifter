@@ -10,6 +10,7 @@ interface MediaCardProps {
   onSetPreservesPitch: (id: number, value: boolean) => void;
   onSetMuted: (id: number, value: boolean) => void;
   onSetReverb: (id: number, value: number) => void;
+  onSetReverbEnabled: (id: number, value: boolean) => void;
 }
 
 const RATE_PRESETS = [
@@ -34,6 +35,7 @@ export function MediaCard({
   onSetPreservesPitch,
   onSetMuted,
   onSetReverb,
+  onSetReverbEnabled,
 }: MediaCardProps) {
   const handleVolumeChange = useCallback(
     (v: number) => onSetVolume(media.id, v),
@@ -58,6 +60,11 @@ export function MediaCard({
   const handleReverbChange = useCallback(
     (v: number) => onSetReverb(media.id, v),
     [media.id, onSetReverb]
+  );
+
+  const handleReverbEnabledToggle = useCallback(
+    (v: boolean) => onSetReverbEnabled(media.id, v),
+    [media.id, onSetReverbEnabled]
   );
 
   return (
@@ -134,15 +141,25 @@ export function MediaCard({
           presets={RATE_PRESETS}
         />
 
-        <SliderControl
-          label="Reverb"
-          value={media.reverb}
-          min={0}
-          max={1}
-          step={0.01}
-          displayValue={`${Math.round(media.reverb * 100)}%`}
-          onChange={handleReverbChange}
-        />
+        {!media.reverbEnabled && (
+          <ToggleSwitch
+            label="Enable Reverb"
+            checked={media.reverbEnabled}
+            onChange={handleReverbEnabledToggle}
+          />
+        )}
+
+        {media.reverbEnabled && (
+          <SliderControl
+            label="Reverb Mix"
+            value={media.reverb}
+            min={0}
+            max={1}
+            step={0.01}
+            displayValue={`${Math.round(media.reverb * 100)}%`}
+            onChange={handleReverbChange}
+          />
+        )}
 
         <ToggleSwitch
           label="Preserve Pitch"

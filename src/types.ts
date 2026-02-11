@@ -10,5 +10,6 @@ export interface MediaInfo {
   playbackRate: number;
   preservesPitch: boolean;
   muted: boolean;
-  reverb: number; // 0-1 wet mix
+  reverb: number;
+  reverbEnabled: boolean;
 }
