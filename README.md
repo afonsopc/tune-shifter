@@ -15,6 +15,8 @@ Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
 **Tune Shifter** gives you studio-grade control over any media playing in your browser. Whether you're slowing down a guitar tutorial on YouTube, adding reverb to a lo-fi playlist, or speeding up a lecture.
 
+https://github.com/user-attachments/assets/ed72841b-d66b-4506-a0fc-ea0adf512152
+
 ### Features
 
 *   🎵 **Universal Control** — Works on any website with audio/video (YouTube, Spotify, Netflix, etc.)
