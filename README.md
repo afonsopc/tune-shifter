@@ -1,6 +1,9 @@
+<img width="128" height="128" alt="icon-128" src="https://github.com/user-attachments/assets/3875dd73-26da-41f1-938a-038b2a41f106" />
+
 # Tune Shifter
 
-Take control of any audio or video on the web. Change playback speed, add reverb, adjust volume, and preserve pitch, all from a sleek popup interface.
+Take control of any audio or video ![Uploading icon-128.png…]()
+on the web. Change playback speed, add reverb, adjust volume, and preserve pitch, all from a sleek popup interface.
 
 Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
