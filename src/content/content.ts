@@ -358,8 +358,7 @@ function getTitle(el: HTMLMediaElement): string {
 }
 
 /** Build MediaInfo snapshot */
-async function buildMediaInfo(el: HTMLMediaElement): Promise<MediaInfo> {
-  const id = getMediaId(el);
+async function buildMediaInfo(el: HTMLMediaElement, id: number): Promise<MediaInfo> {
   const graph = audioGraphRegistry.get(id);
   
   return {
@@ -370,17 +369,13 @@ async function buildMediaInfo(el: HTMLMediaElement): Promise<MediaInfo> {
     paused: el.paused,
     currentTime: el.currentTime,
     duration: el.duration || 0,
-    volume: el.volume,
-    playbackRate: el.playbackRate,
-    preservesPitch:
-      (el as any).preservesPitch !== undefined
-        ? (el as any).preservesPitch
-        : (el as any).mozPreservesPitch !== undefined
-          ? (el as any).mozPreservesPitch
-          : true,
-    muted: el.muted,
+    // Return saved settings instead of element's current state
+    volume: currentSettings.volume,
+    playbackRate: currentSettings.playbackRate,
+    preservesPitch: currentSettings.preservesPitch,
+    muted: currentSettings.muted,
     reverb: graph?.reverbMix ?? currentSettings.reverb,
-    reverbEnabled: graph?.reverbEnabled ?? currentSettings.reverbEnabled,
+    reverbEnabled: graph?.reverbEnabled ?? false,
   };
 }
 
@@ -388,11 +383,15 @@ async function buildMediaInfo(el: HTMLMediaElement): Promise<MediaInfo> {
 async function getAllMedia(): Promise<MediaInfo[]> {
   pruneRegistry();
   const elements = discoverMediaElements();
-  elements.forEach((el) => getMediaId(el));
+  elements.forEach((el) => {
+    const id = getMediaId(el);
+    // Apply saved settings to this element
+    applySettingsToElement(el, id);
+  });
   
   const result: MediaInfo[] = [];
-  for (const [, el] of mediaRegistry) {
-    result.push(await buildMediaInfo(el));
+  for (const [id, el] of mediaRegistry) {
+    result.push(await buildMediaInfo(el, id));
   }
   return result;
 }
