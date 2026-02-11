@@ -2,8 +2,7 @@
 
 # Tune Shifter
 
-Take control of any audio or video ![Uploading icon-128.png…]()
-on the web. Change playback speed, add reverb, adjust volume, and preserve pitch, all from a sleek popup interface.
+Take control of any audio or video on the web. Change playback speed, add reverb, adjust volume, and preserve pitch, all from a sleek popup interface.
 
 Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
