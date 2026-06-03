@@ -10,6 +10,11 @@ export default function App() {
     [sendCommand]
   );
 
+  const handleSetVolumeEnabled = useCallback(
+    (id: number, value: boolean) => sendCommand("setVolumeEnabled", id, value),
+    [sendCommand]
+  );
+
   const handleSetPlaybackRate = useCallback(
     (id: number, value: number) => sendCommand("setPlaybackRate", id, value),
     [sendCommand]
@@ -75,6 +80,7 @@ export default function App() {
           <MediaList
             media={media}
             onSetVolume={handleSetVolume}
+            onSetVolumeEnabled={handleSetVolumeEnabled}
             onSetPlaybackRate={handleSetPlaybackRate}
             onSetPreservesPitch={handleSetPreservesPitch}
             onSetMuted={handleSetMuted}

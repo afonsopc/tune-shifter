@@ -4,6 +4,7 @@ import { MediaCard } from "./MediaCard";
 interface MediaListProps {
   media: MediaInfo[];
   onSetVolume: (id: number, value: number) => void;
+  onSetVolumeEnabled: (id: number, value: boolean) => void;
   onSetPlaybackRate: (id: number, value: number) => void;
   onSetPreservesPitch: (id: number, value: boolean) => void;
   onSetMuted: (id: number, value: boolean) => void;
@@ -14,6 +15,7 @@ interface MediaListProps {
 export function MediaList({
   media,
   onSetVolume,
+  onSetVolumeEnabled,
   onSetPlaybackRate,
   onSetPreservesPitch,
   onSetMuted,
@@ -51,6 +53,7 @@ export function MediaList({
           key={m.id}
           media={m}
           onSetVolume={onSetVolume}
+          onSetVolumeEnabled={onSetVolumeEnabled}
           onSetPlaybackRate={onSetPlaybackRate}
           onSetPreservesPitch={onSetPreservesPitch}
           onSetMuted={onSetMuted}

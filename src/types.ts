@@ -7,6 +7,7 @@ export interface MediaInfo {
   currentTime: number;
   duration: number;
   volume: number;
+  volumeEnabled: boolean;
   playbackRate: number;
   preservesPitch: boolean;
   muted: boolean;

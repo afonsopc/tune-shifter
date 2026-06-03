@@ -73,7 +73,10 @@ export function useMediaList() {
             if (m.id !== id) return m;
             switch (action) {
               case "setVolume":
-                return { ...m, volume: value as number };
+                // Adjusting volume implicitly takes over the page volume.
+                return { ...m, volume: value as number, volumeEnabled: true };
+              case "setVolumeEnabled":
+                return { ...m, volumeEnabled: value as boolean };
               case "setPlaybackRate":
                 return { ...m, playbackRate: value as number };
               case "setPreservesPitch":

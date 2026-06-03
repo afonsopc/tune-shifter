@@ -6,6 +6,7 @@ import { ToggleSwitch } from "./ToggleSwitch";
 interface MediaCardProps {
   media: MediaInfo;
   onSetVolume: (id: number, value: number) => void;
+  onSetVolumeEnabled: (id: number, value: boolean) => void;
   onSetPlaybackRate: (id: number, value: number) => void;
   onSetPreservesPitch: (id: number, value: boolean) => void;
   onSetMuted: (id: number, value: boolean) => void;
@@ -31,6 +32,7 @@ function formatTime(seconds: number): string {
 export function MediaCard({
   media,
   onSetVolume,
+  onSetVolumeEnabled,
   onSetPlaybackRate,
   onSetPreservesPitch,
   onSetMuted,
@@ -40,6 +42,11 @@ export function MediaCard({
   const handleVolumeChange = useCallback(
     (v: number) => onSetVolume(media.id, v),
     [media.id, onSetVolume]
+  );
+
+  const handleVolumeEnabledToggle = useCallback(
+    (v: boolean) => onSetVolumeEnabled(media.id, v),
+    [media.id, onSetVolumeEnabled]
   );
 
   const handleRateChange = useCallback(
@@ -129,6 +136,12 @@ export function MediaCard({
           displayValue={`${Math.round(media.volume * 100)}%`}
           onChange={handleVolumeChange}
         />
+        <ToggleSwitch
+          label="Override page volume"
+          checked={media.volumeEnabled}
+          onChange={handleVolumeEnabledToggle}
+          subtle
+        />
 
         <SliderControl
           label="Speed"
@@ -141,14 +154,11 @@ export function MediaCard({
           presets={RATE_PRESETS}
         />
 
-        {!media.reverbEnabled && (
-          <ToggleSwitch
-            label="Enable Reverb"
-            checked={media.reverbEnabled}
-            onChange={handleReverbEnabledToggle}
-          />
-        )}
-
+        <ToggleSwitch
+          label="Reverb"
+          checked={media.reverbEnabled}
+          onChange={handleReverbEnabledToggle}
+        />
         {media.reverbEnabled && (
           <SliderControl
             label="Reverb Mix"

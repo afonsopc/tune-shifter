@@ -15,6 +15,7 @@ export interface MediaInfo {
   currentTime: number;
   duration: number;
   volume: number;
+  volumeEnabled: boolean;
   playbackRate: number;
   preservesPitch: boolean;
   muted: boolean;
@@ -40,6 +41,7 @@ export type MessageRequest =
   | { action: "ping" }
   | { action: "getMedia" }
   | { action: "setVolume"; id: number; value: number }
+  | { action: "setVolumeEnabled"; id: number; value: boolean }
   | { action: "setPlaybackRate"; id: number; value: number }
   | { action: "setPreservesPitch"; id: number; value: boolean }
   | { action: "setMuted"; id: number; value: boolean }
@@ -60,9 +62,25 @@ function getCurrentDomain(): string {
   return window.location.hostname || 'default';
 }
 
+// Keys that can be persisted/managed per site
+type ManagedKey = keyof PersistedSettings;
+const PERSISTED_KEYS: ManagedKey[] = [
+  "volume",
+  "playbackRate",
+  "preservesPitch",
+  "muted",
+  "reverb",
+];
+
 // Current site settings
 let currentSettings: SiteSettings = { ...DEFAULT_SETTINGS };
 let settingsLoaded = false;
+
+// Which settings the user has explicitly configured for this site.
+// Only managed settings are applied to media elements — otherwise the
+// extension's defaults (e.g. volume = 1) would clobber the site player's
+// own volume/mute controls.
+let managedKeys = new Set<ManagedKey>();
 
 // Audio context - only created when reverb is enabled
 let audioContext: AudioContext | null = null;
@@ -81,6 +99,9 @@ const audioGraphRegistry = new Map<number, MediaAudioGraph>();
 const mediaRegistry = new Map<number, HTMLMediaElement>();
 let nextId = 1;
 
+// Elements that already have enforcement listeners attached
+const enforcedElements = new WeakSet<HTMLMediaElement>();
+
 // Load settings for current site (reverbEnabled always starts as false)
 async function loadSettings(): Promise<void> {
   try {
@@ -90,12 +111,33 @@ async function loadSettings(): Promise<void> {
     const siteSettings = result[storageKey];
     if (siteSettings && typeof siteSettings === 'object') {
       currentSettings = { ...DEFAULT_SETTINGS, ...siteSettings, reverbEnabled: false };
+
+      const storedManaged = (siteSettings as any).managed;
+      if (storedManaged && typeof storedManaged === 'object') {
+        // Newer format: explicit list of user-configured settings
+        managedKeys = new Set(
+          PERSISTED_KEYS.filter((key) => storedManaged[key] === true)
+        );
+      } else {
+        // Legacy data has no `managed` flags. Infer intent conservatively:
+        // only treat a setting as managed when it differs from the default,
+        // so we never force volume/mute back to defaults on the site player.
+        managedKeys = new Set(
+          PERSISTED_KEYS.filter(
+            (key) =>
+              (siteSettings as any)[key] !== undefined &&
+              (siteSettings as any)[key] !== DEFAULT_SETTINGS[key]
+          )
+        );
+      }
     } else {
       currentSettings = { ...DEFAULT_SETTINGS };
+      managedKeys = new Set();
     }
     settingsLoaded = true;
   } catch (e) {
     currentSettings = { ...DEFAULT_SETTINGS };
+    managedKeys = new Set();
     settingsLoaded = true;
   }
 }
@@ -104,12 +146,15 @@ async function loadSettings(): Promise<void> {
 async function saveSettings(): Promise<void> {
   try {
     const domain = getCurrentDomain();
-    const settingsToSave: PersistedSettings = {
+    const managed: Record<string, boolean> = {};
+    for (const key of managedKeys) managed[key] = true;
+    const settingsToSave = {
       volume: currentSettings.volume,
       playbackRate: currentSettings.playbackRate,
       preservesPitch: currentSettings.preservesPitch,
       muted: currentSettings.muted,
       reverb: currentSettings.reverb,
+      managed,
     };
     await chrome.storage.local.set({ [`tuneShifter_${domain}`]: settingsToSave });
   } catch (e) {
@@ -126,15 +171,62 @@ function getMediaId(el: HTMLMediaElement): number {
   return id;
 }
 
+/**
+ * Re-apply managed settings to an element, but only when they actually differ
+ * from the current state. The equality guards make this safe to call from the
+ * element's own `volumechange`/`ratechange` events without causing a feedback
+ * loop. This is what keeps our values in place when the page player (e.g.
+ * YouTube on SPA navigation) resets volume/rate on a new video.
+ */
+function enforceManagedSettings(el: HTMLMediaElement): void {
+  if (managedKeys.has("volume") && Math.abs(el.volume - currentSettings.volume) > 0.005) {
+    el.volume = currentSettings.volume;
+  }
+  if (managedKeys.has("muted") && el.muted !== currentSettings.muted) {
+    el.muted = currentSettings.muted;
+  }
+  if (
+    managedKeys.has("playbackRate") &&
+    el.playbackRate !== currentSettings.playbackRate
+  ) {
+    el.playbackRate = currentSettings.playbackRate;
+  }
+  if (managedKeys.has("preservesPitch")) {
+    if ((el as any).preservesPitch !== currentSettings.preservesPitch) {
+      (el as any).preservesPitch = currentSettings.preservesPitch;
+    }
+    if ((el as any).mozPreservesPitch !== currentSettings.preservesPitch) {
+      (el as any).mozPreservesPitch = currentSettings.preservesPitch;
+    }
+  }
+}
+
+/**
+ * Attach persistent listeners so managed settings survive the page player
+ * fighting back (new src, autoplay restoring volume, slider resets, etc.).
+ * Idempotent per element.
+ */
+function attachEnforcementListeners(el: HTMLMediaElement): void {
+  if (enforcedElements.has(el)) return;
+  enforcedElements.add(el);
+  const reapply = () => enforceManagedSettings(el);
+  // Volume/mute resets, speed resets, and every (re)load or playback start.
+  el.addEventListener("volumechange", reapply);
+  el.addEventListener("ratechange", reapply);
+  el.addEventListener("loadedmetadata", reapply);
+  el.addEventListener("loadeddata", reapply);
+  el.addEventListener("playing", reapply);
+}
+
 /** Apply settings to media element - only Web Audio if reverb enabled */
 function applySettingsToElement(el: HTMLMediaElement, id: number): void {
-  // Basic settings always apply
-  el.volume = currentSettings.volume;
-  el.playbackRate = currentSettings.playbackRate;
-  (el as any).preservesPitch = currentSettings.preservesPitch;
-  (el as any).mozPreservesPitch = currentSettings.preservesPitch;
-  el.muted = currentSettings.muted;
-  
+  // Only apply settings the user has explicitly configured for this site.
+  // Leaving unmanaged settings untouched preserves the page player's own
+  // volume/mute/speed controls (see issue: videos forced to max volume).
+  enforceManagedSettings(el);
+  // Keep them applied even when the page player resets them later.
+  attachEnforcementListeners(el);
+
   // Only init audio graph if reverb is enabled
   if (currentSettings.reverbEnabled) {
     ensureAudioGraph(id, el).then(() => {
@@ -369,11 +461,17 @@ async function buildMediaInfo(el: HTMLMediaElement, id: number): Promise<MediaIn
     paused: el.paused,
     currentTime: el.currentTime,
     duration: el.duration || 0,
-    // Return saved settings instead of element's current state
-    volume: currentSettings.volume,
-    playbackRate: currentSettings.playbackRate,
-    preservesPitch: currentSettings.preservesPitch,
-    muted: currentSettings.muted,
+    // For managed settings show the saved value; otherwise reflect the
+    // element's actual current state so the popup mirrors the page player.
+    volume: managedKeys.has("volume") ? currentSettings.volume : el.volume,
+    volumeEnabled: managedKeys.has("volume"),
+    playbackRate: managedKeys.has("playbackRate")
+      ? currentSettings.playbackRate
+      : el.playbackRate,
+    preservesPitch: managedKeys.has("preservesPitch")
+      ? currentSettings.preservesPitch
+      : (el as any).preservesPitch ?? true,
+    muted: managedKeys.has("muted") ? currentSettings.muted : el.muted,
     reverb: graph?.reverbMix ?? currentSettings.reverb,
     reverbEnabled: graph?.reverbEnabled ?? false,
   };
@@ -396,6 +494,30 @@ async function getAllMedia(): Promise<MediaInfo[]> {
   return result;
 }
 
+/**
+ * Toggle whether the extension controls volume for this site.
+ * When disabled, the page player keeps full control of its own volume.
+ * When enabled, we adopt the element's current volume as the baseline so
+ * enabling never makes the volume jump, then enforce it from then on.
+ */
+async function setVolumeManaged(id: number, enabled: boolean): Promise<boolean> {
+  const el = mediaRegistry.get(id);
+
+  if (enabled) {
+    if (el && !managedKeys.has("volume")) {
+      currentSettings.volume = el.volume;
+    }
+    managedKeys.add("volume");
+    if (el) enforceManagedSettings(el);
+  } else {
+    managedKeys.delete("volume");
+    // Leave el.volume as-is; the page player regains control from here.
+  }
+
+  await saveSettings();
+  return true;
+}
+
 /** Apply a change and save */
 async function applyChange(
   id: number,
@@ -409,22 +531,27 @@ async function applyChange(
     case "volume":
       el.volume = Math.max(0, Math.min(1, value as number));
       currentSettings.volume = el.volume;
+      managedKeys.add("volume");
       break;
     case "playbackRate":
       el.playbackRate = value as number;
       currentSettings.playbackRate = el.playbackRate;
+      managedKeys.add("playbackRate");
       break;
     case "preservesPitch":
       (el as any).preservesPitch = value as boolean;
       (el as any).mozPreservesPitch = value as boolean;
       currentSettings.preservesPitch = value as boolean;
+      managedKeys.add("preservesPitch");
       break;
     case "muted":
       el.muted = value as boolean;
       currentSettings.muted = el.muted;
+      managedKeys.add("muted");
       break;
     case "reverb":
       currentSettings.reverb = Math.max(0, Math.min(1, value as number));
+      managedKeys.add("reverb");
       if (currentSettings.reverbEnabled) {
         updateReverbMix(id, currentSettings.reverb);
       }
@@ -547,6 +674,9 @@ chrome.runtime.onMessage.addListener(
           return { media: await getAllMedia() };
         case "setVolume":
           await applyChange(request.id, "volume", request.value);
+          return { ok: true };
+        case "setVolumeEnabled":
+          await setVolumeManaged(request.id, request.value);
           return { ok: true };
         case "setPlaybackRate":
           await applyChange(request.id, "playbackRate", request.value);
