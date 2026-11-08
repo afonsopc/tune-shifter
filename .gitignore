@@ -1,5 +1,8 @@
 node_modules/
 dist/
+dist-safari/
 *.log
 *.zip
 .DS_Store
+safari/Shared (Extension)/Resources/
+build/

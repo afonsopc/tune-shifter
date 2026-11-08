@@ -4,8 +4,13 @@
   "version": "1.0.0",
   "author": "Afonso Coutinho",
   "description": "Adjust playback speed, volume, and add reverb effects to any audio or video on the current web page.",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "action": {
     "default_popup": "popup/index.html",
     "default_icon": {
@@ -24,20 +29,23 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "background": {
-    "scripts": ["background/background.js"]
-  },
   "browser_specific_settings": {
     "gecko": {
       "id": "oms-tune-shifter@extension",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   }

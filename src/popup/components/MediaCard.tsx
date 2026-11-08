@@ -127,21 +127,25 @@ export function MediaCard({
       </div>
 
       <div className="media-controls">
-        <SliderControl
-          label="Volume"
-          value={media.volume}
-          min={0}
-          max={1}
-          step={0.01}
-          displayValue={`${Math.round(media.volume * 100)}%`}
-          onChange={handleVolumeChange}
-        />
-        <ToggleSwitch
-          label="Override page volume"
-          checked={media.volumeEnabled}
-          onChange={handleVolumeEnabledToggle}
-          subtle
-        />
+        {media.volumeSupported !== false && (
+          <>
+            <SliderControl
+              label="Volume"
+              value={media.volume}
+              min={0}
+              max={1}
+              step={0.01}
+              displayValue={`${Math.round(media.volume * 100)}%`}
+              onChange={handleVolumeChange}
+            />
+            <ToggleSwitch
+              label="Override page volume"
+              checked={media.volumeEnabled}
+              onChange={handleVolumeEnabledToggle}
+              subtle
+            />
+          </>
+        )}
 
         <SliderControl
           label="Speed"

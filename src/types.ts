@@ -13,4 +13,5 @@ export interface MediaInfo {
   muted: boolean;
   reverb: number;
   reverbEnabled: boolean;
+  volumeSupported: boolean;
 }

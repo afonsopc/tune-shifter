@@ -18,11 +18,34 @@ async function queryContentScript(
   });
 }
 
+const IS_SAFARI = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(
+  navigator.userAgent
+);
+
+/**
+ * Safari only runs manifest content scripts on sites the user has allowed.
+ * Opening the popup grants activeTab, so inject the script ourselves when it
+ * isn't there yet. (`scripting` is only requested by the Safari build.)
+ */
+async function injectContentScript(tabId: number): Promise<boolean> {
+  if (!chrome.scripting?.executeScript) return false;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: false },
+      files: ["content/content.js"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function useMediaList() {
   const [media, setMedia] = useState<MediaInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const tabIdRef = useRef<number | null>(null);
+  const injectTriedRef = useRef(false);
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -39,17 +62,29 @@ export function useMediaList() {
         tabIdRef.current = tab.id;
       }
 
-      const response = await queryContentScript(tabIdRef.current, {
-        action: "getMedia",
-      });
-      
+      let response;
+      try {
+        response = await queryContentScript(tabIdRef.current, {
+          action: "getMedia",
+        });
+      } catch (err) {
+        if (injectTriedRef.current) throw err;
+        injectTriedRef.current = true;
+        if (!(await injectContentScript(tabIdRef.current))) throw err;
+        response = await queryContentScript(tabIdRef.current, {
+          action: "getMedia",
+        });
+      }
+
       if (response?.media) {
         setMedia(response.media);
         setError(null);
       }
     } catch (err) {
       setError(
-        "Cannot access this page. Try reloading or navigating to a regular webpage."
+        IS_SAFARI
+          ? "Tune Shifter can't access this page yet. Allow it for this website in Safari (Always Allow on This Website), then reload the page."
+          : "Cannot access this page. Try reloading or navigating to a regular webpage."
       );
     } finally {
       setLoading(false);

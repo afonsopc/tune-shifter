@@ -21,6 +21,7 @@ export interface MediaInfo {
   muted: boolean;
   reverb: number;
   reverbEnabled: boolean;
+  volumeSupported: boolean;
 }
 
 // Settings that are persisted per site
@@ -48,6 +49,13 @@ export type MessageRequest =
   | { action: "setReverb"; id: number; value: number }
   | { action: "setReverbEnabled"; id: number; value: boolean };
 
+// The popup injects this script itself when the browser hasn't (Safari only
+// runs manifest content scripts after the user allows the site). Never run twice.
+if ((window as any).__tuneShifterLoaded) {
+  throw new Error("Tune Shifter already loaded");
+}
+(window as any).__tuneShifterLoaded = true;
+
 const DEFAULT_SETTINGS: SiteSettings = {
   volume: 1,
   playbackRate: 1,
@@ -56,6 +64,18 @@ const DEFAULT_SETTINGS: SiteSettings = {
   reverb: 0,
   reverbEnabled: false,
 };
+
+// iOS/iPadOS Safari ignores writes to HTMLMediaElement.volume (the hardware
+// buttons own the volume there), so the popup hides the volume slider.
+const VOLUME_SUPPORTED = (() => {
+  try {
+    const probe = document.createElement("audio");
+    probe.volume = 0.5;
+    return Math.abs(probe.volume - 0.5) < 0.01;
+  } catch {
+    return true;
+  }
+})();
 
 // Get current domain for per-site storage
 function getCurrentDomain(): string {
@@ -197,6 +217,9 @@ function enforceManagedSettings(el: HTMLMediaElement): void {
     }
     if ((el as any).mozPreservesPitch !== currentSettings.preservesPitch) {
       (el as any).mozPreservesPitch = currentSettings.preservesPitch;
+    }
+    if ((el as any).webkitPreservesPitch !== currentSettings.preservesPitch) {
+      (el as any).webkitPreservesPitch = currentSettings.preservesPitch;
     }
   }
 }
@@ -470,7 +493,8 @@ async function buildMediaInfo(el: HTMLMediaElement, id: number): Promise<MediaIn
       : el.playbackRate,
     preservesPitch: managedKeys.has("preservesPitch")
       ? currentSettings.preservesPitch
-      : (el as any).preservesPitch ?? true,
+      : (el as any).preservesPitch ?? (el as any).webkitPreservesPitch ?? true,
+    volumeSupported: VOLUME_SUPPORTED,
     muted: managedKeys.has("muted") ? currentSettings.muted : el.muted,
     reverb: graph?.reverbMix ?? currentSettings.reverb,
     reverbEnabled: graph?.reverbEnabled ?? false,
@@ -541,6 +565,7 @@ async function applyChange(
     case "preservesPitch":
       (el as any).preservesPitch = value as boolean;
       (el as any).mozPreservesPitch = value as boolean;
+      (el as any).webkitPreservesPitch = value as boolean;
       currentSettings.preservesPitch = value as boolean;
       managedKeys.add("preservesPitch");
       break;
