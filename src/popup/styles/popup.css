@@ -6,7 +6,10 @@
    rhythm, hairline separators, no decorative noise.
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..500&family=Hanken+Grotesk:wght@400;500;600&display=swap');
+/* Letras dentro da extensão: nenhum pedido a servidores de terceiros (Google Fonts). */
+@import '@fontsource-variable/fraunces/opsz.css';
+@import '@fontsource-variable/fraunces/opsz-italic.css';
+@import '@fontsource-variable/hanken-grotesk/index.css';
 
 :root {
   /* Surfaces — warm near-black */
@@ -36,8 +39,8 @@
   --track: rgba(240, 236, 230, 0.1);
 
   /* Type */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-ui: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --font-ui: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
 
   /* Radii */
   --r-card: 14px;
