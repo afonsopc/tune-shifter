@@ -38,6 +38,8 @@ html, body {
 
 main {
     max-width: 480px;
+    min-height: 100vh;
+    justify-content: center;
     margin: 0 auto;
     padding: max(28px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
     display: flex;

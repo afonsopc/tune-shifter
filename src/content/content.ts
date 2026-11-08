@@ -511,8 +511,15 @@ async function getAllMedia(): Promise<MediaInfo[]> {
     applySettingsToElement(el, id);
   });
   
+  // Media with loaded content first: pages often keep hidden, never-loaded
+  // <audio>/<video> elements around, and those shouldn't push the real
+  // player out of view. Sorting on readyState (not paused) keeps the order
+  // stable while the user plays/pauses.
+  const entries = [...mediaRegistry].sort(
+    ([, a], [, b]) => Number(b.readyState > 0) - Number(a.readyState > 0)
+  );
   const result: MediaInfo[] = [];
-  for (const [id, el] of mediaRegistry) {
+  for (const [id, el] of entries) {
     result.push(await buildMediaInfo(el, id));
   }
   return result;

@@ -1,0 +1,32 @@
+{
+  "bundleId": "pt.omelhorsite.tuneshifter",
+  "primaryCategory": "MUSIC",
+  "secondaryCategory": "UTILITIES",
+  "supportUrl": "https://omelhorsite.pt",
+  "marketingUrl": "https://github.com/afonsopc/tune-shifter",
+  "privacyPolicyUrl": "https://github.com/afonsopc/tune-shifter/blob/master/PRIVACY.md",
+  "copyright": "2026 Afonso Coutinho",
+  "review": {
+    "contactFirstName": "Afonso",
+    "contactLastName": "Coutinho",
+    "contactEmail": "afonso@omelhorsite.pt",
+    "contactPhone": "",
+    "notes": "Tune Shifter is a Safari Web Extension. To test: open the app and follow the steps to turn on the extension (iOS/iPadOS: Settings > Apps > Safari > Extensions > Tune Shifter; macOS: Safari > Settings > Extensions > Tune Shifter). Then open any page with audio or video (e.g. https://upload.wikimedia.org/wikipedia/commons/transcoded/6/68/Kevin_MacLeod_-_Erik_Satie_Gymnopedie_No_1.ogg/Kevin_MacLeod_-_Erik_Satie_Gymnopedie_No_1.ogg.mp3), start playback and open Tune Shifter from the Safari page menu (iPhone), the extensions icon (iPad) or the toolbar (Mac). Change speed, turn on reverb or toggle Preserve Pitch. No account or login is needed. The extension collects no data."
+  },
+  "localizations": {
+    "pt-PT": {
+      "name": "Tune Shifter",
+      "subtitle": "Velocidade, tom e reverb",
+      "keywords": "velocidade,tom,reverb,áudio,vídeo,música,slowed,pitch,volume,safari,extensão,abrandar",
+      "promotionalText": "Abranda uma aula de guitarra, acelera um podcast ou junta reverb a uma playlist, em qualquer site, diretamente no Safari.",
+      "description": "O Tune Shifter dá-te controlo sobre qualquer áudio ou vídeo no Safari.\n\n• Velocidade: de 0,5x a 2x, com atalhos rápidos\n• Manter o tom: muda a velocidade sem a voz ficar mais aguda ou mais grave (ou desliga-o para o efeito “slowed”)\n• Reverb: junta profundidade ao som, em tempo real\n• Volume: controla o volume do leitor da página (no Mac)\n• As definições ficam guardadas por site e passam para os vídeos seguintes\n\nFunciona nos sites de vídeo e música que usas todos os dias.\n\nComo ligar:\n• iPhone e iPad: Definições > Apps > Safari > Extensões > Tune Shifter\n• Mac: Safari > Definições > Extensões > Tune Shifter\n\nSem contas, sem anúncios e sem recolha de dados. A extensão só atua nos sites a que lhe deres acesso."
+    },
+    "en-US": {
+      "name": "Tune Shifter",
+      "subtitle": "Speed, pitch and reverb",
+      "keywords": "speed,pitch,reverb,audio,video,music,slowed,playback,volume,safari,extension,tempo,slow down",
+      "promotionalText": "Slow down a guitar lesson, speed up a podcast or add reverb to a playlist, on any site, right in Safari.",
+      "description": "Tune Shifter gives you control over any audio or video in Safari.\n\n• Speed: from 0.5x to 2x, with quick presets\n• Preserve pitch: change speed without voices sounding higher or lower (or turn it off for the “slowed” effect)\n• Reverb: add real-time depth to the sound\n• Volume: control the page player's volume (on Mac)\n• Settings are saved per site and carry over to the next videos\n\nWorks on the video and music sites you use every day.\n\nHow to turn it on:\n• iPhone and iPad: Settings > Apps > Safari > Extensions > Tune Shifter\n• Mac: Safari > Settings > Extensions > Tune Shifter\n\nNo accounts, no ads and no data collection. The extension only acts on the sites you give it access to."
+    }
+  }
+}

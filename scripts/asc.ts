@@ -50,7 +50,7 @@ async function token() {
   return jwt;
 }
 
-async function api(method: string, path: string, data?: unknown): Promise<any> {
+export async function api(method: string, path: string, data?: unknown): Promise<any> {
   const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
     method,
     headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
@@ -67,13 +67,13 @@ async function api(method: string, path: string, data?: unknown): Promise<any> {
 }
 
 const q = encodeURIComponent;
-async function bundleIdFor(identifier: string) {
+export async function bundleIdFor(identifier: string) {
   const r = await api("GET", `/v1/bundleIds?filter[identifier]=${q(identifier)}`);
   const b = r.data.find((x: any) => x.attributes.identifier === identifier);
   if (!b) throw new Error(`bundle id ${identifier} não está registado`);
   return b;
 }
-async function appFor(identifier: string) {
+export async function appFor(identifier: string) {
   const r = await api("GET", `/v1/apps?filter[bundleId]=${q(identifier)}`);
   return r.data.find((x: any) => x.attributes.bundleId === identifier) ?? null;
 }
@@ -235,4 +235,4 @@ async function main() {
   }
 }
 
-void main();
+if (import.meta.main) void main();

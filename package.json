@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "build:safari": "tsc && TARGET=safari vite build",
     "safari": "bash scripts/safari.sh",
-    "safari:dev": "bash scripts/safari.sh dev"
+    "safari:dev": "bash scripts/safari.sh dev",
+    "safari:listing": "bun scripts/asc-listing.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

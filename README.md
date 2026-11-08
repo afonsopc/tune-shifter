@@ -10,6 +10,7 @@ Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/tune-shifter/empnmbaeakhblbiffifgmojmkjiflklp)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/tune-shifter)
+![Safari](https://img.shields.io/badge/Safari_(Mac,_iPhone,_iPad)-Coming_soon-0FB5EE?style=for-the-badge&logo=safari&logoColor=white)
 
 </div>
 
@@ -36,3 +37,31 @@ https://github.com/user-attachments/assets/fbdcc12c-7429-4eea-a1d9-c4f1363b28d0
 4. **Adjust settings** with the sliders - changes are saved automatically
 
 Your settings persist across page reloads and new videos!
+
+## Safari (Mac, iPhone, iPad)
+
+Coming soon to the App Store. Once installed, open the Tune Shifter app and turn the extension on:
+
+- **Mac:** Safari > Settings > Extensions > Tune Shifter
+- **iPhone / iPad:** Settings > Apps > Safari > Extensions > Tune Shifter
+
+Then open Tune Shifter from the Safari toolbar (Mac), the page menu (iPhone) or the extensions icon (iPad).
+On iPhone and iPad the volume slider is hidden: iOS only lets the device buttons change media volume.
+
+## Development
+
+```sh
+npm install
+npm run build          # Chrome / Firefox -> dist/
+npm run build:safari   # Safari web extension -> dist-safari/
+npm run safari:dev     # builds the Mac app (Debug) and opens it, to test in Safari
+npm run safari         # archives, signs and uploads the Mac and iOS builds to App Store Connect
+```
+
+The Xcode project lives in `safari/` (generated with `xcrun safari-web-extension-packager`).
+`npm run safari` copies `dist-safari/` into `safari/Shared (Extension)/Resources/` before building.
+App Store listing text is in `safari/listing.json` and is pushed with `bun scripts/asc-listing.ts all`;
+the screenshots in `safari/screenshots/` are made from real captures with `swift scripts/safari-screenshots.swift`.
+
+Privacy: [PRIVACY.md](PRIVACY.md).
+
