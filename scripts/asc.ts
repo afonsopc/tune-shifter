@@ -59,6 +59,7 @@ export async function api(method: string, path: string, data?: unknown): Promise
   const txt = await res.text();
   const json = txt ? JSON.parse(txt) : {};
   if (!res.ok) {
+    if (process.env.ASC_DEBUG) console.error(JSON.stringify(json, null, 2));
     const err = new Error(`${method} ${path} -> ${res.status}: ${(json.errors || []).map((e: any) => e.detail || e.title).join("; ")}`);
     (err as any).status = res.status;
     throw err;

@@ -277,6 +277,20 @@ async function submit() {
       console.log(`${platform}: já está em ${v.attributes.appStoreState}`);
       continue;
     }
+    // Rejeitada: a versão continua presa ao envio com "problemas por resolver";
+    // marca os itens como resolvidos e volta a enviar esse mesmo envio.
+    const unresolved = (await api("GET", `/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=${platform}&filter[state]=UNRESOLVED_ISSUES&include=items&limit=5`)) as any;
+    if (unresolved.data.length) {
+      const sub = unresolved.data[0];
+      for (const it of unresolved.included || []) {
+        if (it.type === "reviewSubmissionItems" && it.attributes.state === "REJECTED") {
+          await api("PATCH", `/v1/reviewSubmissionItems/${it.id}`, { data: { type: "reviewSubmissionItems", id: it.id, attributes: { resolved: true } } });
+        }
+      }
+      await api("PATCH", `/v1/reviewSubmissions/${sub.id}`, { data: { type: "reviewSubmissions", id: sub.id, attributes: { submitted: true } } });
+      console.log(`${platform}: reenviada para revisão`);
+      continue;
+    }
     const open = (await api("GET", `/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=${platform}&filter[state]=READY_FOR_REVIEW&limit=5`)).data as any[];
     const sub =
       open[0] ??
