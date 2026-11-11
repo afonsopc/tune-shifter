@@ -23,6 +23,8 @@ export interface MediaInfo {
   reverbEnabled: boolean;
   /** Reverb is on but Safari (iOS) waits for a tap on the page to start audio. */
   reverbPending?: boolean;
+  /** False on iOS/iPadOS: Safari there doesn't apply Web Audio effects to page media. */
+  reverbSupported?: boolean;
   volumeSupported: boolean;
 }
 
@@ -437,6 +439,7 @@ async function ensureAudioGraph(id: number, el: HTMLMediaElement): Promise<Media
 
 /** Toggle reverb on/off for a media element */
 async function toggleReverb(id: number, enabled: boolean): Promise<void> {
+  if (IS_IOS && enabled) return;
   const el = mediaRegistry.get(id);
   if (!el) return;
   
@@ -556,6 +559,7 @@ async function buildMediaInfo(el: HTMLMediaElement, id: number): Promise<MediaIn
     reverb: graph?.reverbMix ?? currentSettings.reverb,
     reverbEnabled: (graph?.reverbEnabled ?? false) || pendingReverb.has(id),
     reverbPending: !graph && pendingReverb.has(id),
+    reverbSupported: !IS_IOS,
   };
 }
 

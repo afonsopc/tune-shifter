@@ -97,7 +97,9 @@ export function MediaCard({
 
       <ToggleSwitch label="Preserve pitch" checked={media.preservesPitch} onChange={setPitch} />
 
-      <ToggleSwitch label="Reverb" checked={media.reverbEnabled} onChange={setReverbEnabled} />
+      {media.reverbSupported !== false && (
+        <ToggleSwitch label="Reverb" checked={media.reverbEnabled} onChange={setReverbEnabled} />
+      )}
       {media.reverbPending && <p className="hint">Tap the page once to start the reverb.</p>}
       {media.reverbEnabled && !media.reverbPending && (
         <SliderControl
