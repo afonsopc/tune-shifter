@@ -101,7 +101,7 @@ export function MediaCard({
         <ToggleSwitch label="Reverb" checked={media.reverbEnabled} onChange={setReverbEnabled} />
       )}
       {media.reverbPending && <p className="hint">Tap the page once to start the reverb.</p>}
-      {media.reverbEnabled && !media.reverbPending && (
+      {media.reverbSupported !== false && media.reverbEnabled && !media.reverbPending && (
         <SliderControl
           label="Mix"
           value={media.reverb}
