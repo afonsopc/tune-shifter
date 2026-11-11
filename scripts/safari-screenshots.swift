@@ -83,16 +83,19 @@ func save(_ img: CGImage, _ rel: String) {
 }
 
 struct Caption { let title: String; let sub: String }
+// [0] só no Mac (o reverb é só do Mac); [3] é a do popup no iPhone/iPad (velocidade e tom).
 let captions: [String: [Caption]] = [
   "pt-PT": [
     Caption(title: "Velocidade, reverb e tom", sub: "Em qualquer áudio ou vídeo no Safari"),
     Caption(title: "Sempre à mão", sub: "Abre a partir do menu do Safari"),
     Caption(title: "Liga em poucos passos", sub: "A app explica tudo, sem contas nem anúncios"),
+    Caption(title: "Velocidade e tom", sub: "Em qualquer áudio ou vídeo no Safari"),
   ],
   "en": [
     Caption(title: "Speed, reverb and pitch", sub: "On any audio or video in Safari"),
     Caption(title: "Always within reach", sub: "Open it right from Safari's menu"),
     Caption(title: "Set up in a few steps", sub: "No accounts, no ads"),
+    Caption(title: "Speed and pitch", sub: "On any audio or video in Safari"),
   ],
 ]
 
@@ -103,7 +106,8 @@ func portrait(_ w: Int, _ h: Int, _ shot: CGImage, _ c: Caption, radius: CGFloat
     let titleSize = W * 0.068
     text(ctx, c.title, size: titleSize, weight: .bold, color: color(0xF2EFE9), in: CGRect(x: W * 0.06, y: H - H * 0.115, width: W * 0.88, height: titleSize * 1.3))
     text(ctx, c.sub, size: titleSize * 0.5, weight: .medium, color: color(0xE0A458), in: CGRect(x: W * 0.06, y: H - H * 0.115 - titleSize * 1.05, width: W * 0.88, height: titleSize * 0.9))
-    place(ctx, shot, in: CGRect(x: W * 0.1, y: -H * 0.02, width: W * 0.8, height: H * 0.8), radius: radius)
+    // Captura inteira, com margem em baixo (a folha do iPhone fica junto ao fundo do ecrã).
+    place(ctx, shot, in: CGRect(x: W * 0.1, y: H * 0.035, width: W * 0.8, height: H * 0.79), radius: radius)
   }
 }
 
@@ -142,10 +146,10 @@ let macApp = load("mac-app-pt.png")
 for (loc, cap) in captions {
   let iphoneApp = load("iphone-app-\(loc == "pt-PT" ? "pt" : "en").png")
   let ipadApp = load("ipad-app-\(loc == "pt-PT" ? "pt" : "en").png")
-  save(portrait(1320, 2868, iphonePopupDark, cap[0], radius: 90), "iphone/\(loc)/1.png")
+  save(portrait(1320, 2868, iphonePopupDark, cap[3], radius: 90), "iphone/\(loc)/1.png")
   save(portrait(1320, 2868, iphonePopupLight, cap[1], radius: 90), "iphone/\(loc)/2.png")
   save(portrait(1320, 2868, iphoneApp, cap[2], radius: 90), "iphone/\(loc)/3.png")
-  save(portrait(2064, 2752, ipadSafari, cap[0], radius: 50), "ipad/\(loc)/1.png")
+  save(portrait(2064, 2752, ipadSafari, cap[3], radius: 50), "ipad/\(loc)/1.png")
   save(portrait(2064, 2752, ipadApp, cap[2], radius: 50), "ipad/\(loc)/2.png")
   save(macWindow(macSafari, cap[0]), "mac/\(loc)/1.png")
   if loc == "pt-PT" { save(landscape(macApp, cap[2]), "mac/\(loc)/2.png") }

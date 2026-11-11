@@ -7,12 +7,14 @@
 O Safari não deixa capturar o popup de uma extensão sem o abrir à mão, por isso:
 1. o popup compilado (dist-safari/popup) é desenhado em Chrome headless com um
    `chrome.tabs` falso que devolve um áudio real a tocar (1.25x, preservar tom,
-   reverb 40 %; no iOS sem volume, como na extensão);
+   reverb 40 % só no Mac; no iOS sem volume nem reverb, como na extensão);
 2. é posto por cima de capturas reais do Safari (Simulador via simctl e Safari no
    macOS), na forma em que o Safari mostra popups de extensões: folha em baixo no
    iPhone, popover no iPad e no Mac.
 
-Entradas em safari/screenshots/raw/: iphone-page.png, ipad-page.png, mac-safari-base.png.
+Entradas em safari/screenshots/raw/: iphone-page.png (Simulador), ipad-page.png (Simulador),
+mac-safari-base.png (janela do Safari no macOS) e mac-page.png (página da Wikimedia Commons
+em Chrome headless a 1470x871 @2x).
 Saídas no mesmo sítio: iphone-popup-dark.png, iphone-popup-light.png, ipad-popup.png,
 mac-safari-popup.png.
 """
@@ -132,20 +134,18 @@ def ipad(page, pop):
     return img.convert("RGB")
 
 
-def mac(base, pop, bar):
-    """Janela real do Safari (macOS): página de áudio da Wikimedia e popover sob o ícone."""
+def mac(base, pop, page):
+    """Janela real do Safari (macOS): página do ficheiro na Wikimedia Commons e popover sob o ícone."""
     img = base.copy()
     alpha = img.split()[3]
     W, H = img.size
     d = ImageDraw.Draw(img)
-    page_bg = (38, 38, 38, 255)
-    d.rectangle((0, 105, W, H), fill=page_bg)  # tapa a página de teste e o popover antigo
-    # Página de áudio: a barra de controlos do WebKit (mesma captura do iPad, também @2x) ao centro.
-    img.paste(bar, ((W - bar.width) // 2, 105 + (H - 105 - bar.height) // 2))
-    # Barra de endereço: endereço real e sem o ícone de tradução (não aparece em ficheiros de áudio).
+    # Página clara (a do ficheiro na Commons, @2x) por baixo da barra: o popover escuro destaca-se.
+    img.paste(page.crop((0, 0, W, H - 105)), (0, 105))
+    # Barra de endereço: endereço real e sem o ícone de tradução.
     field = (57, 57, 57, 255)
-    d.rectangle((1410, 30, 1540, 74), fill=field)
-    d.text((1475, 52), "upload.wikimedia.org", font=font(27), fill=(236, 236, 236), anchor="mm")
+    d.rectangle((1380, 30, 1570, 74), fill=field)
+    d.text((1475, 52), "commons.wikimedia.org", font=font(27), fill=(236, 236, 236), anchor="mm")
     speaker = img.crop((1928, 28, 1972, 76))
     d.rectangle((1926, 28, 2018, 76), fill=field)
     img.paste(speaker, (1972, 28))
@@ -168,12 +168,13 @@ def main():
         srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Quiet, directory=tmp))
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         port = srv.server_address[1]
-        ios = dict(touch=True, width=1272 / 3, scale=3, volumeSupported=False)
+        # iOS/iPadOS: sem volume nem reverb (o Safari do iOS não aplica Web Audio), como a extensão.
+        ios = dict(touch=True, width=1272 / 3, scale=3, volumeSupported=False, reverbSupported=False, reverbEnabled=False)
         pd = render(tmp, port, "ios-dark", dark=True, currentTime=23, **ios)
         pl = render(tmp, port, "ios-light", dark=False, currentTime=23, **ios)
-        pi = render(tmp, port, "ipad", dark=True, touch=True, width=360, scale=2, currentTime=2, volumeSupported=False)
-        pm = render(tmp, port, "mac", dark=True, touch=False, width=300, scale=2, currentTime=2,
-                    volumeSupported=True, volumeEnabled=True, volume=0.8)
+        pi = render(tmp, port, "ipad", dark=True, touch=True, width=360, scale=2, currentTime=2, volumeSupported=False, reverbSupported=False, reverbEnabled=False)
+        pm = render(tmp, port, "mac", dark=True, touch=False, width=300, scale=2, currentTime=42, duration=187,
+                    volumeSupported=True, reverbSupported=True, volumeEnabled=True, volume=0.8)
         srv.shutdown()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -183,8 +184,8 @@ def main():
     iphone(page, pl, False).save(os.path.join(RAW, "iphone-popup-light.png"))
     ipad_page = Image.open(os.path.join(RAW, "ipad-page.png"))
     ipad(ipad_page, pi).save(os.path.join(RAW, "ipad-popup.png"))
-    bar = ipad_page.convert("RGBA").crop((380, 1420, 1690, 1520))
-    mac(Image.open(os.path.join(RAW, "mac-safari-base.png")).convert("RGBA"), pm, bar).save(os.path.join(RAW, "mac-safari-popup.png"))
+    mac_page = Image.open(os.path.join(RAW, "mac-page.png")).convert("RGBA")
+    mac(Image.open(os.path.join(RAW, "mac-safari-base.png")).convert("RGBA"), pm, mac_page).save(os.path.join(RAW, "mac-safari-popup.png"))
     print("ok")
 
 
