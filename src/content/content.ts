@@ -21,6 +21,8 @@ export interface MediaInfo {
   muted: boolean;
   reverb: number;
   reverbEnabled: boolean;
+  /** Reverb is on but Safari (iOS) waits for a tap on the page to start audio. */
+  reverbPending?: boolean;
   volumeSupported: boolean;
 }
 
@@ -67,7 +69,13 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
 // iOS/iPadOS Safari ignores writes to HTMLMediaElement.volume (the hardware
 // buttons own the volume there), so the popup hides the volume slider.
-const VOLUME_SUPPORTED = (() => {
+const IS_IOS =
+  /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+// iOS ignores media.volume (the hardware buttons own it), even when the
+// property reads back the value that was set.
+const VOLUME_SUPPORTED = !IS_IOS && (() => {
   try {
     const probe = document.createElement("audio");
     probe.volume = 0.5;
@@ -116,6 +124,48 @@ interface MediaAudioGraph {
   reverbEnabled: boolean;
 }
 const audioGraphRegistry = new Map<number, MediaAudioGraph>();
+// Reverb turned on while the AudioContext can't start yet (iOS Safari only
+// starts audio from a tap on the page itself, not from the extension popup).
+const pendingReverb = new Set<number>();
+const GESTURE_EVENTS = ["touchend", "pointerup", "click", "keydown"] as const;
+let gestureArmed = false;
+
+function onPageGesture() {
+  if (!audioContext) return;
+  // resume() must be called synchronously inside the gesture.
+  audioContext.resume().then(() => {
+    if (audioContext?.state !== "running") return;
+    disarmGesture();
+    for (const id of [...pendingReverb]) {
+      pendingReverb.delete(id);
+      const el = mediaRegistry.get(id);
+      if (el && currentSettings.reverbEnabled) {
+        createAudioGraph(id, el).then(() => updateReverbMix(id, currentSettings.reverb));
+      }
+    }
+  }).catch(() => {});
+}
+
+function armGesture() {
+  if (gestureArmed) return;
+  gestureArmed = true;
+  for (const ev of GESTURE_EVENTS) window.addEventListener(ev, onPageGesture, { capture: true, passive: true });
+}
+
+function disarmGesture() {
+  if (!gestureArmed) return;
+  gestureArmed = false;
+  for (const ev of GESTURE_EVENTS) window.removeEventListener(ev, onPageGesture, { capture: true });
+}
+
+/** Resolves true once the context runs, false if it is still suspended after `ms`. */
+async function tryResume(ctx: AudioContext, ms = 300): Promise<boolean> {
+  if (ctx.state === "running") return true;
+  try {
+    await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, ms))]);
+  } catch {}
+  return (ctx.state as string) === "running";
+}
 const mediaRegistry = new Map<number, HTMLMediaElement>();
 let nextId = 1;
 
@@ -322,9 +372,14 @@ async function createAudioGraph(id: number, el: HTMLMediaElement): Promise<Media
   try {
     const ctx = await initAudioContext();
     
-    if (ctx.state === "suspended") {
-      await ctx.resume();
+    // Routing the element into a suspended context would silence it, so wait
+    // for a tap on the page instead (iOS Safari).
+    if (!(await tryResume(ctx))) {
+      pendingReverb.add(id);
+      armGesture();
+      return null;
     }
+    pendingReverb.delete(id);
     
     const sourceNode = ctx.createMediaElementSource(el);
     
@@ -390,6 +445,8 @@ async function toggleReverb(id: number, enabled: boolean): Promise<void> {
     await createAudioGraph(id, el);
     updateReverbMix(id, currentSettings.reverb);
   } else {
+    pendingReverb.delete(id);
+    if (pendingReverb.size === 0) disarmGesture();
     // Disable: disconnect and remove graph
     const graph = audioGraphRegistry.get(id);
     if (graph && audioContext) {
@@ -497,7 +554,8 @@ async function buildMediaInfo(el: HTMLMediaElement, id: number): Promise<MediaIn
     volumeSupported: VOLUME_SUPPORTED,
     muted: managedKeys.has("muted") ? currentSettings.muted : el.muted,
     reverb: graph?.reverbMix ?? currentSettings.reverb,
-    reverbEnabled: graph?.reverbEnabled ?? false,
+    reverbEnabled: (graph?.reverbEnabled ?? false) || pendingReverb.has(id),
+    reverbPending: !graph && pendingReverb.has(id),
   };
 }
 

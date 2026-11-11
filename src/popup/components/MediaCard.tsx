@@ -15,18 +15,23 @@ interface MediaCardProps {
 }
 
 const RATE_PRESETS = [
-  { label: "0.5x", value: 0.5 },
-  { label: "0.8x", value: 0.8 },
-  { label: "1x", value: 1 },
-  { label: "1.2x", value: 1.2 },
-  { label: "1.5x", value: 1.5 },
+  { label: "0.5", value: 0.5 },
+  { label: "0.8", value: 0.8 },
+  { label: "1", value: 1 },
+  { label: "1.25", value: 1.25 },
+  { label: "1.5", value: 1.5 },
+  { label: "2", value: 2 },
 ];
 
 function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "--:--";
+  if (!isFinite(seconds) || seconds < 0) return "";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatRate(rate: number): string {
+  return `${parseFloat(rate.toFixed(2))}×`;
 }
 
 export function MediaCard({
@@ -39,96 +44,78 @@ export function MediaCard({
   onSetReverb,
   onSetReverbEnabled,
 }: MediaCardProps) {
-  const handleVolumeChange = useCallback(
-    (v: number) => onSetVolume(media.id, v),
-    [media.id, onSetVolume]
-  );
+  const id = media.id;
+  const setVolume = useCallback((v: number) => onSetVolume(id, v), [id, onSetVolume]);
+  const setVolumeEnabled = useCallback((v: boolean) => onSetVolumeEnabled(id, v), [id, onSetVolumeEnabled]);
+  const setRate = useCallback((v: number) => onSetPlaybackRate(id, v), [id, onSetPlaybackRate]);
+  const setPitch = useCallback((v: boolean) => onSetPreservesPitch(id, v), [id, onSetPreservesPitch]);
+  const toggleMute = useCallback(() => onSetMuted(id, !media.muted), [id, media.muted, onSetMuted]);
+  const setReverb = useCallback((v: number) => onSetReverb(id, v), [id, onSetReverb]);
+  const setReverbEnabled = useCallback((v: boolean) => onSetReverbEnabled(id, v), [id, onSetReverbEnabled]);
 
-  const handleVolumeEnabledToggle = useCallback(
-    (v: boolean) => onSetVolumeEnabled(media.id, v),
-    [media.id, onSetVolumeEnabled]
-  );
-
-  const handleRateChange = useCallback(
-    (v: number) => onSetPlaybackRate(media.id, v),
-    [media.id, onSetPlaybackRate]
-  );
-
-  const handlePitchToggle = useCallback(
-    (v: boolean) => onSetPreservesPitch(media.id, v),
-    [media.id, onSetPreservesPitch]
-  );
-
-  const handleMuteToggle = useCallback(
-    () => onSetMuted(media.id, !media.muted),
-    [media.id, media.muted, onSetMuted]
-  );
-
-  const handleReverbChange = useCallback(
-    (v: number) => onSetReverb(media.id, v),
-    [media.id, onSetReverb]
-  );
-
-  const handleReverbEnabledToggle = useCallback(
-    (v: boolean) => onSetReverbEnabled(media.id, v),
-    [media.id, onSetReverbEnabled]
-  );
+  const time = formatTime(media.currentTime);
+  const duration = formatTime(media.duration);
 
   return (
-    <div className={`media-card ${media.paused ? "paused" : "playing"}`}>
-      <div className="media-card-header">
-        <div className="media-info">
-          <span className={`media-type-badge ${media.type}`}>
-            {media.type === "video" ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="4" width="15" height="16" rx="2" />
-                <path d="M17 8l5-3v14l-5-3V8z" />
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18V5l12-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="18" cy="16" r="3" />
-              </svg>
-            )}
-            {media.type}
-          </span>
-          <span className={`media-status ${media.paused ? "paused" : "playing"}`}>
-            {media.paused ? "Paused" : "Playing"}
-          </span>
-        </div>
+    <section className="media">
+      <div className="media-head">
+        <span className={`dot ${media.paused ? "" : "on"}`} aria-hidden />
+        <span className="media-title" title={media.title}>
+          {media.title}
+        </span>
+        {time && <span className="media-time">{duration ? `${time} / ${duration}` : time}</span>}
         <button
-          className={`mute-btn ${media.muted ? "muted" : ""}`}
-          onClick={handleMuteToggle}
+          className={`icon-btn ${media.muted ? "muted" : ""}`}
+          onClick={toggleMute}
           title={media.muted ? "Unmute" : "Mute"}
+          aria-label={media.muted ? "Unmute" : "Mute"}
         >
-          {media.muted ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            {media.muted ? (
+              <>
+                <line x1="22" y1="9" x2="16" y2="15" />
+                <line x1="16" y1="9" x2="22" y2="15" />
+              </>
+            ) : (
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-            </svg>
-          )}
+            )}
+          </svg>
         </button>
       </div>
 
-      <div className="media-title" title={media.title}>
-        {media.title}
-      </div>
+      <SliderControl
+        label="Speed"
+        value={media.playbackRate}
+        min={0.25}
+        max={2}
+        step={0.01}
+        displayValue={formatRate(media.playbackRate)}
+        onChange={setRate}
+        presets={RATE_PRESETS}
+      />
 
-      <div className="media-time">
-        {formatTime(media.currentTime)} / {formatTime(media.duration)}
-      </div>
+      <ToggleSwitch label="Preserve pitch" checked={media.preservesPitch} onChange={setPitch} />
 
-      <div className="media-controls">
-        {media.volumeSupported !== false && (
-          <>
+      <ToggleSwitch label="Reverb" checked={media.reverbEnabled} onChange={setReverbEnabled} />
+      {media.reverbPending && <p className="hint">Tap the page once to start the reverb.</p>}
+      {media.reverbEnabled && !media.reverbPending && (
+        <SliderControl
+          label="Mix"
+          value={media.reverb}
+          min={0}
+          max={1}
+          step={0.01}
+          displayValue={`${Math.round(media.reverb * 100)}%`}
+          onChange={setReverb}
+          nested
+        />
+      )}
+
+      {media.volumeSupported !== false && (
+        <>
+          <ToggleSwitch label="Override volume" checked={media.volumeEnabled} onChange={setVolumeEnabled} />
+          {media.volumeEnabled && (
             <SliderControl
               label="Volume"
               value={media.volume}
@@ -136,51 +123,12 @@ export function MediaCard({
               max={1}
               step={0.01}
               displayValue={`${Math.round(media.volume * 100)}%`}
-              onChange={handleVolumeChange}
+              onChange={setVolume}
+              nested
             />
-            <ToggleSwitch
-              label="Override page volume"
-              checked={media.volumeEnabled}
-              onChange={handleVolumeEnabledToggle}
-              subtle
-            />
-          </>
-        )}
-
-        <SliderControl
-          label="Speed"
-          value={media.playbackRate}
-          min={0.5}
-          max={2}
-          step={0.01}
-          displayValue={`${media.playbackRate.toFixed(2)}x`}
-          onChange={handleRateChange}
-          presets={RATE_PRESETS}
-        />
-
-        <ToggleSwitch
-          label="Reverb"
-          checked={media.reverbEnabled}
-          onChange={handleReverbEnabledToggle}
-        />
-        {media.reverbEnabled && (
-          <SliderControl
-            label="Reverb Mix"
-            value={media.reverb}
-            min={0}
-            max={1}
-            step={0.01}
-            displayValue={`${Math.round(media.reverb * 100)}%`}
-            onChange={handleReverbChange}
-          />
-        )}
-
-        <ToggleSwitch
-          label="Preserve Pitch"
-          checked={media.preservesPitch}
-          onChange={handlePitchToggle}
-        />
-      </div>
-    </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }

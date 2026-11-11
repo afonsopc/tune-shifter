@@ -10,6 +10,7 @@ interface SliderControlProps {
   displayValue: string;
   onChange: (value: number) => void;
   presets?: { label: string; value: number }[];
+  nested?: boolean;
 }
 
 export function SliderControl({
@@ -21,22 +22,19 @@ export function SliderControl({
   displayValue,
   onChange,
   presets,
+  nested = false,
 }: SliderControlProps) {
   const handleInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onChange(parseFloat(e.target.value));
-    },
+    (e: React.FormEvent<HTMLInputElement>) => onChange(parseFloat(e.currentTarget.value)),
     [onChange]
   );
-
-  // Calculate fill percentage for the track
-  const pct = ((value - min) / (max - min)) * 100;
+  const pct = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
   return (
-    <div className="slider-control" data-label={label}>
-      <div className="slider-header">
-        <span className="slider-label">{label}</span>
-        <span className="slider-value">{displayValue}</span>
+    <div className={`row slider-row ${nested ? "nested" : ""}`}>
+      <div className="row-line">
+        <span className="row-label">{label}</span>
+        <span className="row-value">{displayValue}</span>
       </div>
       <input
         type="range"
@@ -46,21 +44,19 @@ export function SliderControl({
         step={step}
         value={value}
         onInput={handleInput}
-        style={
-          {
-            "--fill-pct": `${pct}%`,
-          } as React.CSSProperties
-        }
+        onChange={handleInput}
+        aria-label={label}
+        style={{ "--fill": `${pct}%` } as React.CSSProperties}
       />
       {presets && presets.length > 0 && (
-        <div className="slider-presets">
-          {presets.map((preset) => (
+        <div className="presets" role="group" aria-label={`${label} presets`}>
+          {presets.map((p) => (
             <button
-              key={preset.label}
-              className={`preset-btn ${Math.abs(value - preset.value) < 0.01 ? "active" : ""}`}
-              onClick={() => onChange(preset.value)}
+              key={p.label}
+              className={Math.abs(value - p.value) < 0.005 ? "active" : ""}
+              onClick={() => onChange(p.value)}
             >
-              {preset.label}
+              {p.label}
             </button>
           ))}
         </div>

@@ -13,5 +13,7 @@ export interface MediaInfo {
   muted: boolean;
   reverb: number;
   reverbEnabled: boolean;
+  /** Reverb is on but Safari (iOS) waits for a tap on the page to start audio. */
+  reverbPending?: boolean;
   volumeSupported: boolean;
 }
