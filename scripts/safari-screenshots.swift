@@ -116,37 +116,37 @@ func landscape(_ shot: CGImage, _ c: Caption) -> CGImage {
   }
 }
 
-let iphonePopupFull = load("iphone-popup-full.png")
-let iphonePopupHalf = load("iphone-popup-half.png")
-// O popup do Tune Shifter (sem a folha do Safari), para o iPad.
-let popupCard = crop(iphonePopupFull, 30, 450, 1260, 1540)
-let ipadPage = load("ipad-page.png")
-// iPad: popover do Tune Shifter por baixo do ícone das extensões, sobre a página real.
-let ipadSafari = canvas(2064, 2752) { ctx in
-  ctx.draw(ipadPage, in: CGRect(x: 0, y: 0, width: 2064, height: 2752))
-  let w: CGFloat = 840, h = w * CGFloat(popupCard.height) / CGFloat(popupCard.width)
-  let box = CGRect(x: 1290 - w / 2, y: 2752 - 190 - h, width: w, height: h)
-  ctx.saveGState()
-  ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 60, color: color(0x000000, 0.6))
-  ctx.addPath(CGPath(roundedRect: box, cornerWidth: 36, cornerHeight: 36, transform: nil)); ctx.setFillColor(color(0x1A1815)); ctx.fillPath()
-  ctx.restoreGState()
-  ctx.saveGState()
-  ctx.addPath(CGPath(roundedRect: box, cornerWidth: 36, cornerHeight: 36, transform: nil)); ctx.clip()
-  ctx.draw(popupCard, in: box)
-  ctx.restoreGState()
+/// Mac com a janela inteira do Safari: legenda em cima, janela por baixo (o popup fica legível).
+func macWindow(_ shot: CGImage, _ c: Caption) -> CGImage {
+  canvas(2880, 1800) { ctx in
+    text(ctx, c.title, size: 96, weight: .bold, color: color(0xF2EFE9), in: CGRect(x: 160, y: 1800 - 220, width: 2560, height: 130))
+    text(ctx, c.sub, size: 48, weight: .medium, color: color(0xE0A458), in: CGRect(x: 160, y: 1800 - 300, width: 2560, height: 80))
+    let s = min(2560 / CGFloat(shot.width), 1400 / CGFloat(shot.height))
+    let w = CGFloat(shot.width) * s, h = CGFloat(shot.height) * s
+    let r = CGRect(x: 1440 - w / 2, y: 60, width: w, height: h)
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -16), blur: 70, color: color(0x000000, 0.6))
+    ctx.draw(shot, in: r)
+    ctx.restoreGState()
+  }
 }
-// Mac: o popover do Safari recortado da captura real.
-let macPopup = crop(load("mac-safari-popup.png"), 480, 124, 694, 1042)
+
+// Capturas do popup em uso (scripts/safari-popup-raws.py): folha do Safari no iPhone
+// (escuro e claro), popover no iPad e no Mac.
+let iphonePopupDark = load("iphone-popup-dark.png")
+let iphonePopupLight = load("iphone-popup-light.png")
+let ipadSafari = load("ipad-popup.png")
+let macSafari = load("mac-safari-popup.png")
 let macApp = load("mac-app-pt.png")
 
 for (loc, cap) in captions {
   let iphoneApp = load("iphone-app-\(loc == "pt-PT" ? "pt" : "en").png")
   let ipadApp = load("ipad-app-\(loc == "pt-PT" ? "pt" : "en").png")
-  save(portrait(1320, 2868, iphonePopupFull, cap[0], radius: 90), "iphone/\(loc)/1.png")
-  save(portrait(1320, 2868, iphonePopupHalf, cap[1], radius: 90), "iphone/\(loc)/2.png")
+  save(portrait(1320, 2868, iphonePopupDark, cap[0], radius: 90), "iphone/\(loc)/1.png")
+  save(portrait(1320, 2868, iphonePopupLight, cap[1], radius: 90), "iphone/\(loc)/2.png")
   save(portrait(1320, 2868, iphoneApp, cap[2], radius: 90), "iphone/\(loc)/3.png")
   save(portrait(2064, 2752, ipadSafari, cap[0], radius: 50), "ipad/\(loc)/1.png")
   save(portrait(2064, 2752, ipadApp, cap[2], radius: 50), "ipad/\(loc)/2.png")
-  save(landscape(macPopup, cap[0]), "mac/\(loc)/1.png")
+  save(macWindow(macSafari, cap[0]), "mac/\(loc)/1.png")
   if loc == "pt-PT" { save(landscape(macApp, cap[2]), "mac/\(loc)/2.png") }
 }
