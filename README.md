@@ -10,7 +10,8 @@ Developed by **[Afonso Coutinho](https://github.com/afonsopc)**.
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/tune-shifter/empnmbaeakhblbiffifgmojmkjiflklp)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/tune-shifter)
-![Safari](https://img.shields.io/badge/Safari_(Mac,_iPhone,_iPad)-Coming_soon-0FB5EE?style=for-the-badge&logo=safari&logoColor=white)
+[![App Store](https://img.shields.io/badge/App_Store-iPhone_&_iPad-0D96F6?style=for-the-badge&logo=app-store&logoColor=white)](https://apps.apple.com/app/id6832348789)
+![Safari for Mac](https://img.shields.io/badge/Safari_(Mac)-Coming_soon-0FB5EE?style=for-the-badge&logo=safari&logoColor=white)
 
 </div>
 
@@ -40,13 +41,13 @@ Your settings persist across page reloads and new videos!
 
 ## Safari (Mac, iPhone, iPad)
 
-Coming soon to the App Store. Once installed, open the Tune Shifter app and turn the extension on:
+[Get it on the App Store](https://apps.apple.com/app/id6832348789) for iPhone and iPad (the Mac version is still in review). Once installed, open the Tune Shifter app and turn the extension on:
 
 - **Mac:** Safari > Settings > Extensions > Tune Shifter
 - **iPhone / iPad:** Settings > Apps > Safari > Extensions > Tune Shifter
 
 Then open Tune Shifter from the Safari toolbar (Mac), the page menu (iPhone) or the extensions icon (iPad).
-On iPhone and iPad the volume slider is hidden: iOS only lets the device buttons change media volume.
+On iPhone and iPad the volume and reverb controls are hidden: iOS Safari doesn't let extensions change media volume or route page audio through Web Audio.
 
 ## Development
 
